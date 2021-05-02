@@ -2,7 +2,7 @@
 
 Solutions to the exercises at <https://adventofcode.com/2020/>.
 
-Automated architecture for Advent of Code 2020 from https://github.com/coriolinus/adventofcode-2020. 
+Automated code submission architecture for Advent of Code 2020 from https://github.com/coriolinus/adventofcode-2020. 
 
 ## Initial setup
 
