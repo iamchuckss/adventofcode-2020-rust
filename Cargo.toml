@@ -27,4 +27,5 @@ toml_edit = "0.2.0"
 [workspace]
 members = [
     "day01",
+    "day02",
 ]

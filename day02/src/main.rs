@@ -1,11 +1,11 @@
 use aoc2020::{config::Config, website::get_input};
-use {package_name}::{part1, part2};
+use day02::{part1, part2};
 
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
 use std::path::PathBuf;
 
-const DAY: u8 = {day};
+const DAY: u8 = 2;
 
 #[derive(StructOpt, Debug)]
 struct RunArgs {
