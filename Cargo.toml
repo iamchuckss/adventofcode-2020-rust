@@ -1,0 +1,30 @@
+[package]
+name = "aoc2020"
+version = "0.1.0"
+authors = ["Steve Chuck <schuck017@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+bitvec = "0.19.4"
+chrono = "0.4.19"
+color-eyre = "0.5.8"
+dirs = "3.0.1"
+itertools = "0.9.0"
+lazy_static = "1.4.0"
+num = "0.3.1"
+parse-display = "0.4.0"
+path-absolutize = "3.0.6"
+regex = "1.4.2"
+reqwest = { version = "0.10.9", features = [ "blocking", "gzip", "cookies" ] }
+serde = { version = "1.0.117", features = [ "derive" ] }
+smallstr = "0.2.0"
+structopt = "0.3.20"
+thiserror = "1.0.22"
+tinytemplate = "1.1.0"
+toml = "0.5.7"
+toml_edit = "0.2.0"
+
+[workspace]
+members = [
+    "day01",
+]
