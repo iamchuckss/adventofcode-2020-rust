@@ -15,10 +15,10 @@ impl Forest {
         let mut loop_counter: usize = 0;
         for row_idx in (row_incr..self.rows.len()).step_by(row_incr) {
             loop_counter += 1;
-            let curr_row = self.rows.get(row_idx).unwrap();
+            let curr_row = self.rows.get(row_idx).ok_or(Error::InvalidArgs(format!("{}", row_idx)))?;
             let col_idx = (loop_counter * col_incr) % curr_row.len();
             
-            let curr_char = curr_row.get(col_idx).unwrap();
+            let curr_char = curr_row.get(col_idx).ok_or(Error::InvalidArgs(format!("{}", row_idx)))?;
             if *curr_char == TREE_CHAR as u8 {
                 n_trees += 1;
             }
@@ -67,6 +67,8 @@ pub fn part2(input: &Path) -> Result<(), Error> {
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("Invalid argument(s) `{0}`")]
+    InvalidArgs(String),
 }
 
 
