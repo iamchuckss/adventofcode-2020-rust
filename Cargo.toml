@@ -28,4 +28,5 @@ toml_edit = "0.2.0"
 members = [
     "day01",
     "day02",
+    "day03",
 ]

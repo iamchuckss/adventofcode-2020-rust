@@ -41,10 +41,7 @@ fn parse_target_char(input: &String) -> char {
 fn string_contains_n_char(input: &str, target_char: &char, lo: i32, hi: i32) -> bool {
     let mut char_count: HashMap<char, i32> = HashMap::new();
     for c in input.chars() {
-        let old_count = match char_count.get(&c) {
-            Some(val) => val,
-            _ => &0
-        };
+        let old_count = char_count.get(&c).unwrap_or(&0);
         let new_count = *old_count + 1;
         char_count.insert(c, new_count);
     }
