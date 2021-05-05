@@ -91,7 +91,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
                .unwrap();
 
             match key {
-                "byr" => passport.byr = Some(val.parse().unwrap()),
+                "byr" => passport.byr = Some(val.parse::<i32>().unwrap()),
                 "iyr" => passport.iyr = Some(val.parse().unwrap()),
                 "eyr" => passport.eyr = Some(val.parse().unwrap()),
                 "hgt" => passport.hgt = Some(val.to_string()),
