@@ -23,7 +23,7 @@ pub fn part2(input: &Path) -> Result<(), Error> {
     .map(|s| {
         let mut char_count: HashMap<char, i32> = HashMap::new();
         let total_lines = s.trim().chars().filter(|c| c == &'\n').collect::<String>().len() as i32 + 1;
-        
+
         s.trim()
             .chars()
             .filter(|c| !c.is_whitespace())
@@ -50,8 +50,3 @@ pub enum Error {
     #[error("Invalid argument(s) `{0}`")]
     InvalidArgs(String),
 }
-
-
-/* Alternative Solution
-
-*/
