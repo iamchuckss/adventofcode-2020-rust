@@ -1,5 +1,4 @@
 use aoc2020::parse;
-use itertools::Itertools;
 
 use std::{path::Path};
 use thiserror::Error;
