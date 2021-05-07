@@ -32,18 +32,22 @@ impl BagGraph {
             }
         }        
     }
+
+    pub fn sum_bags(&self, bag:&str) -> i32 {
+        if !self.graph.contains_key(&bag.to_string()) { return 0; }
+
+        let current_bag = self.graph.get(&bag.to_string()).unwrap();
+        
+        return current_bag.iter()
+            .map(|(inner_bag, num)| {
+                *num + *num * BagGraph::sum_bags(&self, inner_bag.as_str())
+            })
+            .sum(); 
+    }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let re = Regex::new(r"(\d+) (\d+)").unwrap();
-    let test = "1 23";
-    let children = re.captures(test).unwrap();
-    
-    println!("{:?}", children); 
-
-
-    let rules: Vec<BagRule> = parse::<BagRule>(input)?
-        .collect();
+    let rules = parse::<BagRule>(input)?;
 
     let mut graph: HashMap<String, HashMap<String, i32>> = HashMap::new();
     let re = Regex::new(r"(\d+) (.*) [bag|bags]").unwrap();
@@ -74,6 +78,31 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
+    let rules = parse::<BagRule>(input)?;
+
+    let mut graph: HashMap<String, HashMap<String, i32>> = HashMap::new();
+    let re = Regex::new(r"(\d+) (.*) [bag|bags]").unwrap();
+    
+    for rule in rules {
+        let inner_graph = graph.entry(rule.bag.clone()).or_insert(HashMap::new());
+        let tokens = rule.children_string.split(",");
+    
+        for token in tokens {
+            let captured = re.captures(token.trim())
+                .map(|cap| (cap[2].to_string(), cap[1].parse::<i32>().unwrap()));
+            
+            match captured {
+                Some((inner_bag, num_item)) => { inner_graph.insert(inner_bag, num_item ); },
+                _ => {}
+            }
+        }
+    }
+
+    let bag_graph = BagGraph {graph: graph};
+
+    let count = bag_graph.sum_bags("shiny gold");
+    
+    dbg!(count);
     Ok(())
 }
 
