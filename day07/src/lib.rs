@@ -1,7 +1,6 @@
-use aoc2020::{input::parse_newline_sep, parse};
-use itertools::Itertools;
+use aoc2020::{parse};
 
-use std::{collections::{HashMap, HashSet}, num, path::Path};
+use std::{collections::{HashMap}, path::Path};
 use thiserror::Error;
 use regex::Regex;
 
@@ -17,6 +16,28 @@ struct BagGraph {
 }
 
 impl BagGraph {
+    pub fn new(rules: impl Iterator<Item = BagRule>) -> BagGraph {
+        let mut graph: HashMap<String, HashMap<String, i32>> = HashMap::new();
+        let re = Regex::new(r"(\d+) (.*) [bag|bags]").unwrap();
+        
+        for rule in rules {
+            let inner_graph = graph.entry(rule.bag.clone()).or_insert(HashMap::new());
+            let tokens = rule.children_string.split(",");
+        
+            for token in tokens {
+                let captured = re.captures(token.trim())
+                    .map(|cap| (cap[2].to_string(), cap[1].parse::<i32>().unwrap()));
+                
+                match captured {
+                    Some((inner_bag, num_item)) => { inner_graph.insert(inner_bag, num_item ); },
+                    _ => {}
+                }
+            }
+        }
+        
+        BagGraph {graph: graph}
+    }
+
     pub fn has_n_bag(&self, bag: &str, target: &str, num_item: i32) -> bool {
         if !self.graph.contains_key(&bag.to_string()) { return false; }
 
@@ -40,7 +61,7 @@ impl BagGraph {
         
         return current_bag.iter()
             .map(|(inner_bag, num)| {
-                *num + *num * BagGraph::sum_bags(&self, inner_bag.as_str())
+                *num + (*num * BagGraph::sum_bags(&self, inner_bag.as_str()))
             })
             .sum(); 
     }
@@ -48,27 +69,7 @@ impl BagGraph {
 
 pub fn part1(input: &Path) -> Result<(), Error> {
     let rules = parse::<BagRule>(input)?;
-
-    let mut graph: HashMap<String, HashMap<String, i32>> = HashMap::new();
-    let re = Regex::new(r"(\d+) (.*) [bag|bags]").unwrap();
-    
-    for rule in rules {
-        let inner_graph = graph.entry(rule.bag.clone()).or_insert(HashMap::new());
-        let tokens = rule.children_string.split(",");
-    
-        for token in tokens {
-            let captured = re.captures(token.trim())
-                .map(|cap| (cap[2].to_string(), cap[1].parse::<i32>().unwrap()));
-            
-            match captured {
-                Some((inner_bag, num_item)) => { inner_graph.insert(inner_bag, num_item ); },
-                _ => {}
-            }
-        }
-    }
-
-    let bag_graph = BagGraph {graph: graph};
-
+    let bag_graph = BagGraph::new(rules);
     let count = bag_graph.graph.keys().filter(|bag| {
         bag_graph.has_n_bag(bag.as_str(), "shiny gold", 1)
     }).count();
@@ -79,29 +80,8 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 
 pub fn part2(input: &Path) -> Result<(), Error> {
     let rules = parse::<BagRule>(input)?;
-
-    let mut graph: HashMap<String, HashMap<String, i32>> = HashMap::new();
-    let re = Regex::new(r"(\d+) (.*) [bag|bags]").unwrap();
-    
-    for rule in rules {
-        let inner_graph = graph.entry(rule.bag.clone()).or_insert(HashMap::new());
-        let tokens = rule.children_string.split(",");
-    
-        for token in tokens {
-            let captured = re.captures(token.trim())
-                .map(|cap| (cap[2].to_string(), cap[1].parse::<i32>().unwrap()));
-            
-            match captured {
-                Some((inner_bag, num_item)) => { inner_graph.insert(inner_bag, num_item ); },
-                _ => {}
-            }
-        }
-    }
-
-    let bag_graph = BagGraph {graph: graph};
-
+    let bag_graph = BagGraph::new(rules);
     let count = bag_graph.sum_bags("shiny gold");
-    
     dbg!(count);
     Ok(())
 }
