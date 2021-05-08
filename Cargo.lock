@@ -436,8 +436,10 @@ name = "day08"
 version = "0.1.0"
 dependencies = [
  "aoc2020",
+ "bitvec",
  "color-eyre",
  "itertools",
+ "parse-display",
  "structopt",
  "thiserror",
 ]

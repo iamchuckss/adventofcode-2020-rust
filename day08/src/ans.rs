@@ -1,157 +1,145 @@
 use aoc2020::parse;
 
-use lazy_static::lazy_static;
-use regex::Regex;
-use std::collections::{HashMap, HashSet, VecDeque};
+use bitvec::{bitvec, order::Lsb0, vec::BitVec};
 use std::path::Path;
 use thiserror::Error;
 
-lazy_static! {
-    static ref LUGGAGE_OUTER_RE: Regex = Regex::new(r"^(?P<outer_color>.*) bags contain").unwrap();
-    static ref LUGGAGE_INNER_RE: Regex =
-        Regex::new(r"(?P<qty>\d+) (?P<color>[^,.]*) bags?[.,]").unwrap();
+#[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::Display, parse_display::FromStr)]
+#[display(style = "snake_case")]
+pub enum Operation {
+    Acc,
+    Jmp,
+    Nop,
 }
 
-const MY_BAG: &str = "shiny gold";
-
-pub struct LuggageRule {
-    outer_color: String,
-    contents: Vec<(u32, String)>,
-}
-
-impl std::str::FromStr for LuggageRule {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let outer_color = LUGGAGE_OUTER_RE
-            .captures(s)
-            .ok_or_else(|| "could not find outer color".to_string())?["outer_color"]
-            .to_string();
-
-        let contents = LUGGAGE_INNER_RE
-            .captures_iter(s)
-            .map(|capture| {
-                (
-                    capture["qty"]
-                        .parse::<u32>()
-                        .expect("regex guarantees positive integers"),
-                    capture["color"].to_string(),
-                )
-            })
-            .collect();
-
-        Ok(LuggageRule {
-            outer_color,
-            contents,
-        })
+impl Operation {
+    fn is_jmp_nop(&self) -> bool {
+        match self {
+            Self::Jmp | Self::Nop => true,
+            _ => false,
+        }
     }
+
+    fn invert_jmp_nop(&mut self) {
+        match self {
+            Self::Jmp => *self = Self::Nop,
+            Self::Nop => *self = Self::Jmp,
+            Self::Acc => {}
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::Display, parse_display::FromStr)]
+#[display("{operation} {argument}")]
+pub struct Instruction {
+    operation: Operation,
+    argument: i64,
+}
+
+pub struct HandheldGameConsole {
+    instructions: Vec<Instruction>,
+    instruction_pointer: i64,
+    accumulator: i64,
+    loop_detect: BitVec<Lsb0, u64>,
+}
+
+impl HandheldGameConsole {
+    /// Initialize a handheld game console
+    pub fn new(instructions: Vec<Instruction>) -> Self {
+        Self {
+            loop_detect: bitvec!(Lsb0, u64; 0; instructions.len()),
+            instructions,
+            instruction_pointer: 0,
+            accumulator: 0,
+        }
+    }
+
+    /// Execute a single instruction
+    ///
+    /// If this instruction has previously been seen, return `true` without executing it.
+    /// Once this function returns `true`, further calls are idempotent.
+    fn step(&mut self) -> Result<bool, Error> {
+        if !(0..self.instructions.len() as i64).contains(&self.instruction_pointer) {
+            return Err(Error::InstructionPointerOutOfRange(
+                self.instruction_pointer,
+                self.instructions.len(),
+            ));
+        }
+        let ip = self.instruction_pointer as usize;
+        if *self
+            .loop_detect
+            .get(ip)
+            .expect("instructions initialized with appropriate len; qed")
+        {
+            return Ok(true);
+        }
+        self.loop_detect.set(ip, true);
+        let instruction = self.instructions[ip];
+        let delta_ip = match instruction.operation {
+            Operation::Acc => {
+                self.accumulator += instruction.argument;
+                1
+            }
+            Operation::Jmp => instruction.argument,
+            Operation::Nop => 1,
+        };
+        self.instruction_pointer += delta_ip;
+
+        Ok(false)
+    }
+
+    /// Run this computer until a loop is detected.
+    ///
+    /// Return the current value of the accumulator on loop.
+    pub fn run(&mut self) -> Result<i64, Error> {
+        while !self.step()? {}
+        Ok(self.accumulator)
+    }
+}
+
+/// Seek a mutation of the program which completes successfully.
+///
+/// For each Jmp or Nop in the instruction set, create a computer which runs a modified version
+/// of the instructions with that instruction's operation reversed.
+///
+/// If any such computer concludes with `InstructionPointerOutOfRange(n, n)`, then that computer's
+/// run was successful; returns the computer's accumulator.
+pub fn mutate_seeking_success(instructions: Vec<Instruction>) -> Result<i64, Error> {
+    use std::convert::TryInto;
+
+    for (idx, instruction) in instructions.iter().enumerate() {
+        if instruction.operation.is_jmp_nop() {
+            let mut modified_instructions = instructions.clone();
+            modified_instructions[idx].operation.invert_jmp_nop();
+
+            let mut computer = HandheldGameConsole::new(modified_instructions);
+            if let Err(Error::InstructionPointerOutOfRange(ip, size)) = computer.run() {
+                if size
+                    .try_into()
+                    .map(|size: i64| size == ip)
+                    .unwrap_or_default()
+                {
+                    return Ok(computer.accumulator);
+                }
+            }
+        }
+    }
+
+    Err(Error::ExhaustiveMutationSearchFailed)
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let mut direct_containers: HashMap<String, HashSet<String>> = HashMap::new();
-    for rule in parse::<LuggageRule>(input)? {
-        for (_, contained_bag) in &rule.contents {
-            direct_containers
-                .entry(contained_bag.clone())
-                .or_default()
-                .insert(rule.outer_color.clone());
-        }
-    }
-
-    let mut queue: VecDeque<_> = direct_containers[MY_BAG].iter().cloned().collect();
-    let mut all_containers = HashSet::new();
-    while let Some(q) = queue.pop_front() {
-        if all_containers.insert(q.clone()) {
-            // true if the value was not present in the set
-            queue.extend(direct_containers.entry(q).or_default().iter().cloned());
-        }
-    }
-
-    println!(
-        "{} bags can eventually contain a {} bag",
-        all_containers.len(),
-        MY_BAG
-    );
-
+    let instructions: Vec<Instruction> = parse(input)?.collect();
+    let mut computer = HandheldGameConsole::new(instructions);
+    let acc = computer.run()?;
+    println!("accumulator on loop: {}", acc);
     Ok(())
-}
-
-fn query_rules(rules: &HashMap<String, LuggageRule>, color: &str) -> u64 {
-    let rule = match rules.get(color) {
-        None => return 0,
-        Some(rule) => rule,
-    };
-
-    let mut qty_contained = 0_u64;
-
-    for (qty, color) in &rule.contents {
-        let qty = *qty as u64;
-        qty_contained += qty;
-        qty_contained += qty * query_rules(rules, color);
-    }
-
-    qty_contained
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    let rules: HashMap<_, _> = parse::<LuggageRule>(input)?
-        .map(|rule| (rule.outer_color.clone(), rule))
-        .collect();
-    let total_contained = query_rules(&rules, MY_BAG);
-    println!("my bag contains {} other bags", total_contained);
-
-    Ok(())
-}
-
-fn query_rules_memoize(
-    rules: &HashMap<String, LuggageRule>,
-    memo: &mut HashMap<String, u64>,
-    color: &str,
-) -> u64 {
-    let rule = match rules.get(color) {
-        None => return 0,
-        Some(rule) => rule,
-    };
-
-    let mut qty_contained = 0;
-
-    for (qty, color) in &rule.contents {
-        let qty = *qty as u64;
-        qty_contained += qty;
-        let per_color = match memo.get(color) {
-            Some(n) => *n,
-            None => query_rules_memoize(rules, memo, color),
-        };
-        qty_contained += qty * per_color;
-    }
-
-    memo.insert(color.to_string(), qty_contained);
-    qty_contained
-}
-
-pub fn exhaustive_quantize(input: &Path, n: usize) -> Result<(), Error> {
-    let rules: HashMap<_, _> = parse::<LuggageRule>(input)?
-        .map(|rule| (rule.outer_color.clone(), rule))
-        .collect();
-
-    let mut exhaustive_contents = HashMap::new();
-    for color in rules.keys() {
-        query_rules_memoize(&rules, &mut exhaustive_contents, color);
-    }
-
-    let mut exhaustive: Vec<_> = exhaustive_contents.iter().map(|(k, v)| (v, k)).collect();
-    exhaustive.sort();
-
-    for (n, color) in exhaustive.iter().rev().take(n) {
-        println!("{:>30}: {:6}", color, n);
-    }
-    println!("{:>31}", "...");
-    println!("{:>30}: {:6}", MY_BAG, exhaustive_contents[MY_BAG]);
-    println!("{:>31}", "...");
-    for (n, color) in exhaustive.iter().take(n).rev() {
-        println!("{:>30}: {:6}", color, n);
-    }
-
+    let instructions: Vec<Instruction> = parse(input)?.collect();
+    let acc = mutate_seeking_success(instructions)?;
+    println!("accumulator on success: {}", acc);
     Ok(())
 }
 
@@ -159,4 +147,8 @@ pub fn exhaustive_quantize(input: &Path, n: usize) -> Result<(), Error> {
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("instruction pointer out of range: must be in 0..{1}; is {0}")]
+    InstructionPointerOutOfRange(i64, usize),
+    #[error("no mutation found which terminates successfully")]
+    ExhaustiveMutationSearchFailed,
 }

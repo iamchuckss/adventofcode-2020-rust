@@ -56,6 +56,14 @@ impl InstructionSet {
         }
         return true;
     }
+
+    pub fn run(&mut self) {
+        loop {
+            if !self.execute_next() {
+                break;
+            }
+        }
+    }
 }
 
 
@@ -77,12 +85,8 @@ pub fn part1(input: &Path) -> Result<(), Error> {
         }).collect::<Vec<Instruction>>();
     
     let mut instruction_set: InstructionSet = InstructionSet::new(instructions);
-    
-    loop {
-        if !instruction_set.execute_next() {
-            break;
-        }
-    }
+
+    instruction_set.run();
 
     println!("{}", instruction_set.get_accumulator());
 
@@ -90,8 +94,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-   
-    Ok(())
+    unimplemented!();
 }
 
 #[derive(Debug, Error)]
