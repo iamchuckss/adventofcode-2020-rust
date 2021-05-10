@@ -44,12 +44,14 @@ pub fn part2(input: &Path) -> Result<(), Error> {
 
 fn count_ways(adapters: &Vec<u32>, idx: usize, prev: u32, cache: &mut HashMap<(usize, u32), u64>) -> u64 {
     if idx >= adapters.len() { return 1; }
-    if (adapters[idx] - prev) > 3 { return 0; }
     if cache.contains_key(&(idx, prev)) { return *cache.get(&(idx, prev)).unwrap(); }
 
-    // println!("{} {}", idx, prev);
-    let res = count_ways(adapters, idx + 1, adapters[idx], cache) + 
-    count_ways(adapters, idx + 1, prev, cache);
+    let mut res = 0;
+    for i in idx..adapters.len() {
+        if (adapters[i] - prev) <= 3 { 
+            res += count_ways(adapters, i + 1, adapters[i], cache);
+        }        
+    }
 
     cache.insert((idx, prev), res);
     return res;
