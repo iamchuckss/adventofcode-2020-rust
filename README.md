@@ -2,8 +2,6 @@
 
 Solutions to the exercises at <https://adventofcode.com/2020/>.
 
-Automated tool for Advent of Code 2020 from https://github.com/coriolinus/adventofcode-2020. 
-
 ## Initial setup
 
 Log in to the AoC site with whatever method you prefer. Then use the browser's dev tools to
